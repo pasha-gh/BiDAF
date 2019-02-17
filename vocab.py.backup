@@ -1,0 +1,138 @@
+# Copyright 2018 Stanford University
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""This file contains a function to read the GloVe vectors from file,
+and return them as an embedding matrix"""
+
+from __future__ import absolute_import
+from __future__ import division
+
+from tqdm import tqdm
+import numpy as np
+
+_PAD = b"<pad>"
+_UNK = b"<unk>"
+_START_VOCAB = [_PAD, _UNK]
+PAD_ID = 0
+UNK_ID = 1
+
+
+def get_glove(glove_path, glove_dim):
+    """Reads from original GloVe .txt file and returns embedding matrix and
+    mappings from words to word ids.
+
+    Input:
+      glove_path: path to glove.6B.{glove_dim}d.txt
+      glove_dim: integer; needs to match the dimension in glove_path
+
+    Returns:
+      emb_matrix: Numpy array shape (400002, glove_dim) containing glove embeddings
+        (plus PAD and UNK embeddings in first two rows).
+        The rows of emb_matrix correspond to the word ids given in word2id and id2word
+      word2id: dictionary mapping word (string) to word id (int)
+      id2word: dictionary mapping word id (int) to word (string)
+    """
+    print "Loading GLoVE vectors from file: %s" % glove_path
+    emb_matrix, word2id, id2word = get_full_vocab(glove_path, glove_dim)
+    #print(len(word2id.keys()))
+    print 'loaded full vocab'
+    vocab_size = len(word2id.keys())
+    
+    for word in _START_VOCAB:
+        word2id[word] = vocab_size
+        id2word[vocab_size] = word
+        vocab_size += 1
+
+    print vocab_size
+
+    return emb_matrix, word2id, id2word
+
+
+def get_full_vocab(glove_path, glove_dim):
+    extra_text = []
+    print 'opeining dev.question'
+    with open('../data/dev.question') as f:
+        validate_questions = f.readlines()
+    f.close()
+    print 'done with dev questions'
+    with open('../data/dev.context') as f:
+        validate_contexts = f.readlines()
+    f.close()
+    with open('../data/train.question') as f:
+        train_questions = f.readlines()
+    f.close()
+    with open('../data/train.context') as f:
+        train_contexts = f.readlines()
+    f.close()
+    '''
+    embeddings_index, vocab, reverse_vocab = create_word_embeddings(glove_path)
+    print(len(vocab.keys()))
+    print(reverse_vocab[399999])
+
+    print 'creating vocab for OOV'
+    for questions in validate_questions:
+        words = questions.split()
+        embeddings_index, vocab, reverse_vocab = create_vocab(words, embeddings_index, vocab, reverse_vocab, glove_dim)
+    print('a')
+    for questions in validate_contexts:
+        words = questions.split()
+        embeddings_index, vocab, reverse_vocab = create_vocab(words, embeddings_index, vocab, reverse_vocab, glove_dim)
+    print 'b'
+    for questions in train_questions:
+        words = questions.split()
+        embeddings_index, vocab, reverse_vocab = create_vocab(words, embeddings_index, vocab, reverse_vocab, glove_dim)
+    print 'c'
+    for questions in train_contexts:
+        words = questions.split()
+        embeddings_index, vocab, reverse_vocab = create_vocab(words, embeddings_index, vocab, reverse_vocab, glove_dim)
+    print 'OOV created'
+    '''
+    data_path = '../data/'
+    embeddings_index = np.load(data_path + 'emb_matrix.npy').item()
+    vocab = np.load(data_path + 'word2id.npy').item()
+    reverse_vocab = np.load(data_path + 'id2word.npy').item()
+
+    #print(len(vocab.keys()))
+    return embeddings_index, vocab, reverse_vocab
+
+def create_word_embeddings(glove_path):
+    vocab = {}
+    reverse_vocab = {}
+    embeddings_index = {}
+    print 'opening glove embeddngs'
+    f = open(glove_path)
+    print 'opened embeddings'
+    vocab_index = 0
+    for line in f:
+        values = line.split()
+        word = values[0]
+        vocab[word] = vocab_index
+        reverse_vocab[vocab_index] = word
+        coefs = np.asarray(values[1:], dtype='float32')
+        embeddings_index[word] = coefs
+        vocab_index += 1
+    f.close()
+    print 'loaded embeddings'
+    return embeddings_index, vocab, reverse_vocab
+
+def create_vocab(words, embeddings_index, vocab, reverse_vocab, glove_dim):
+    vocab_index = len(vocab.keys())
+    for word in words:
+        if word not in vocab:
+            vocab[word] = vocab_index
+            reverse_vocab[vocab_index] = word
+            embeddings_index[word] = np.random.uniform(low=-0.05, high=0.05, size=(1,300))
+            vocab_index += 1
+            
+    return embeddings_index, vocab, reverse_vocab
